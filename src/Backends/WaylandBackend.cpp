@@ -1136,7 +1136,7 @@ namespace gamescope
     }
     bool CWaylandConnector::IsVRRActive() const
     {
-        return cv_adaptive_sync && m_bHostCompositorIsCurrentlyVRR;
+        return cv_adaptive_sync;
     }
     std::span<const BackendMode> CWaylandConnector::GetModes() const
     {
