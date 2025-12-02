@@ -41,6 +41,8 @@ extern int g_nPreferredOutputHeight;
 extern bool g_bForceHDR10OutputDebug;
 extern bool g_bBorderlessOutputWindow;
 
+extern std::string *g_pVROverlayKey;
+
 extern gamescope::ConVar<bool> cv_composite_force;
 extern bool g_bColorSliderInUse;
 extern bool fadingOut;
@@ -467,26 +469,6 @@ namespace gamescope
 			if ( g_nOutputWidth == 0 )
 				g_nOutputWidth = g_nOutputHeight * 16 / 9;
 
-            vr::EVRInitError error = vr::VRInitError_None;
-            VR_Init( &error, vr::VRApplication_Background );
-
-            if ( error != vr::VRInitError_None )
-            {
-                openvr_log.errorf("Unable to init VR runtime: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription( error ));
-                return false;
-            }
-
-			if ( !vulkan_init( vulkan_get_instance(), VK_NULL_HANDLE ) )
-			{
-				return false;
-			}
-
-			if ( !wlsession_init() )
-			{
-				fprintf( stderr, "Failed to initialize Wayland session\n" );
-				return false;
-			}
-
             // Reset getopt() state
             optind = 1;
 
@@ -500,6 +482,7 @@ namespace gamescope
                         opt_name = gamescope_options[opt_index].name;
                         if (strcmp(opt_name, "vr-overlay-key") == 0) {
                             m_szOverlayKey = optarg;
+                            g_pVROverlayKey = &m_szOverlayKey;
                         } else if (strcmp(opt_name, "vr-app-overlay-key") == 0) {
                             m_szAppOverlayKey = optarg;
                         } else if (strcmp(opt_name, "vr-overlay-explicit-name") == 0) {
@@ -550,6 +533,26 @@ namespace gamescope
                         assert(false); // unreachable
                 }
             }
+
+            vr::EVRInitError error = vr::VRInitError_None;
+            VR_Init( &error, vr::VRApplication_Background );
+
+            if ( error != vr::VRInitError_None )
+            {
+                openvr_log.errorf("Unable to init VR runtime: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription( error ));
+                return false;
+            }
+
+			if ( !vulkan_init( vulkan_get_instance(), VK_NULL_HANDLE ) )
+			{
+				return false;
+			}
+
+			if ( !wlsession_init() )
+			{
+				fprintf( stderr, "Failed to initialize Wayland session\n" );
+				return false;
+			}
 
             if ( !m_pchOverlayName )
                 m_pchOverlayName = "Gamescope";

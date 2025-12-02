@@ -243,6 +243,8 @@ struct xwayland_ctx_t final : public gamescope::IWaitable
 		Atom gamescopeDisplayRefreshRateFeedback;
 		Atom gamescopeDisplayDynamicRefreshBasedOnGamePresence;
 
+		Atom gamescopeMainSteamVROverlay;
+
 		Atom wineHwndStyle;
 		Atom wineHwndStyleEx;
 
