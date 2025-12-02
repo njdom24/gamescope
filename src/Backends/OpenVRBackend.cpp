@@ -1771,24 +1771,31 @@ namespace gamescope
             bool bIsSteam = VirtualConnectorKeyIsSteam( ulKey );
             if ( !bIsSteam )
             {
-                bExplicitNonSteam = VirtualConnectorKeyIsNonSteamWindow( ulKey );
-                if ( bExplicitNonSteam )
+                if ( ulKey == k_ulSteamBootstrapperKey )
                 {
-                    sOverlayKey = std::format( "gamescope.{}.window.{}", wlserver_get_wl_display_name(), ulKey & ~gamescope::k_ulNonSteamWindowBit );
+                    sOverlayKey = "valve.steam.gamepadui.bootstrapper";
                 }
                 else
                 {
-                    const char *pszAppOverlayKey = m_pBackend->GetAppOverlayKey();
-                    if ( pszAppOverlayKey && *pszAppOverlayKey )
+                    bExplicitNonSteam = VirtualConnectorKeyIsNonSteamWindow( ulKey );
+                    if ( bExplicitNonSteam )
                     {
-                        sOverlayKey = pszAppOverlayKey;
-                        sOverlayKey += ".";
+                        sOverlayKey = std::format( "gamescope.{}.window.{}", wlserver_get_wl_display_name(), ulKey & ~gamescope::k_ulNonSteamWindowBit );
                     }
                     else
                     {
-                        sOverlayKey += ".app.";
+                        const char *pszAppOverlayKey = m_pBackend->GetAppOverlayKey();
+                        if ( pszAppOverlayKey && *pszAppOverlayKey )
+                        {
+                            sOverlayKey = pszAppOverlayKey;
+                            sOverlayKey += ".";
+                        }
+                        else
+                        {
+                            sOverlayKey += ".app.";
+                        }
+                        sOverlayKey += std::to_string( m_pConnector->GetVirtualConnectorKey() );
                     }
-                    sOverlayKey += std::to_string( m_pConnector->GetVirtualConnectorKey() );
                 }
             }
         }

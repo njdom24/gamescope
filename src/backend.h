@@ -67,6 +67,9 @@ namespace gamescope
     }
 
     static constexpr uint64_t k_ulNonSteamWindowBit = ( uint64_t( 1 ) << 63u );
+    static constexpr uint64_t k_ulReservedBit = ( uint64_t( 1 ) << 62u );
+
+    static constexpr gamescope::VirtualConnectorKey_t k_ulSteamBootstrapperKey = ( uint64_t( 1 ) | k_ulReservedBit );
 
     static inline bool VirtualConnectorKeyIsNonSteamWindow( VirtualConnectorKey_t ulKey )
     {

@@ -233,7 +233,12 @@ struct steamcompmgr_win_t {
 		case gamescope::VirtualConnectorStrategies::SteamControlled:
 			return 0;
 		case gamescope::VirtualConnectorStrategies::PerAppId:
-			if ( this->appID )
+			if ( this->isSteamLegacyBigPicture )
+			{
+				// Steam Bootstrapper
+				return gamescope::k_ulSteamBootstrapperKey;
+			}
+			else if ( this->appID )
 			{
 				return static_cast<gamescope::VirtualConnectorKey_t>( this->appID );
 			}
