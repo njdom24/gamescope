@@ -599,7 +599,8 @@ static void handle_wl_surface_destroy( struct wl_listener *l, void *data )
 
 	if ( surf->pSyncobjSurface )
 	{
-		wl_resource_destroy( surf->pSyncobjSurface->GetResource() );
+		surf->pSyncobjSurface->Detach();
+		assert( surf->pSyncobjSurface == nullptr );
 	}
 
 	surf->wlr->data = nullptr;
