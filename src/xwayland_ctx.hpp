@@ -251,6 +251,9 @@ struct xwayland_ctx_t final : public gamescope::IWaitable
 		Atom clipboard;
 		Atom primarySelection;
 		Atom targets;
+
+		Atom wm_protocols;
+		Atom wm_delete_window;
 	} atoms;
 
 	bool HasQueuedEvents();

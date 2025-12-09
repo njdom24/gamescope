@@ -55,6 +55,7 @@ extern bool g_bAllowDeferredBackend;
 
 void MakeFocusDirty();
 void update_connector_display_info_wl(struct drm_t *drm);
+void close_virtual_connector_key(gamescope::VirtualConnectorKey_t eKey);
 
 static LogScope openvr_log("openvr");
 
@@ -1088,8 +1089,7 @@ namespace gamescope
                     }
                     else
                     {
-                        // How do we quit a game?
-                        // Do we?
+                        close_virtual_connector_key( pConnector->GetVirtualConnectorKey() );
                     }
                     break;
                 }

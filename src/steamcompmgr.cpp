@@ -804,6 +804,15 @@ extern bool g_bForceRelativeMouse;
 
 CommitDoneList_t g_steamcompmgr_xdg_done_commits;
 
+
+static std::mutex s_KeysToCloseMutex;
+static std::vector<gamescope::VirtualConnectorKey_t> s_KeysToClose;
+void close_virtual_connector_key(gamescope::VirtualConnectorKey_t eKey)
+{
+	std::unique_lock lock{ s_KeysToCloseMutex };
+	s_KeysToClose.push_back( eKey );
+}
+
 struct ignore {
 	struct ignore	*next;
 	unsigned long	sequence;
@@ -7719,6 +7728,9 @@ void init_xwayland_ctx(uint32_t serverId, gamescope_xwayland_server_t *xwayland_
 	ctx->atoms.primarySelection = XInternAtom(ctx->dpy, "PRIMARY", false);
 	ctx->atoms.targets = XInternAtom(ctx->dpy, "TARGETS", false);
 
+	ctx->atoms.wm_protocols = XInternAtom(ctx->dpy, "WM_PROTOCOLS", false);
+	ctx->atoms.wm_delete_window = XInternAtom(ctx->dpy, "WM_DELETE_WINDOW", false);
+
 	ctx->root_width = DisplayWidth(ctx->dpy, ctx->scr);
 	ctx->root_height = DisplayHeight(ctx->dpy, ctx->scr);
 
@@ -8390,6 +8402,13 @@ steamcompmgr_main(int argc, char **argv)
 		}
 #endif
 
+		std::vector<gamescope::VirtualConnectorKey_t> keysToClose;
+		{
+			std::unique_lock lock{ s_KeysToCloseMutex };
+			keysToClose = std::move( s_KeysToClose );
+			s_KeysToClose.clear();
+		}
+
 		// XXX: Need to look into why this doesn't work.
 		//	if ( bDirtyFocuses )
 		{
@@ -8412,6 +8431,27 @@ steamcompmgr_main(int argc, char **argv)
 					}
 
 					gamescope::VirtualConnectorKey_t ulKey = pWindow->GetVirtualConnectorKey( eVirtualConnectorStrategy );
+
+					if ( gamescope::Algorithm::Contains( keysToClose, ulKey ) )
+					{
+						if ( pWindow->type == steamcompmgr_win_type_t::XWAYLAND )
+						{
+							XEvent event = {0};
+							event.xclient.type = ClientMessage;
+							event.xclient.window = pWindow->xwayland().id;
+							event.xclient.message_type = pWindow->xwayland().ctx->atoms.wm_protocols;
+							event.xclient.format = 32;
+							event.xclient.data.l[0] = pWindow->xwayland().ctx->atoms.wm_delete_window;
+							event.xclient.data.l[1] = CurrentTime;
+
+							XSendEvent(pWindow->xwayland().ctx->dpy, pWindow->xwayland().id, False, NoEventMask, &event);
+						}
+						else
+						{
+							xwm_log.errorf( "Closing Wayland windows not supported yet." );
+						}
+					}
+
 					if ( !gamescope::Algorithm::Contains( newKeys, ulKey ) )
 						newKeys.emplace_back( ulKey );
 				}
