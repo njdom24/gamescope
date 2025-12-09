@@ -8296,6 +8296,13 @@ steamcompmgr_main(int argc, char **argv)
 				auto focusWindows = GetGlobalPossibleFocusWindows();
 				for ( steamcompmgr_win_t *pWindow : focusWindows )
 				{
+					// Exclude windows that are useless (1x1), or override redirect windows
+					if ( win_is_useless( pWindow ) ||
+						( pWindow->type == XWAYLAND && pWindow->xwayland().a.override_redirect ) )
+					{
+						continue;
+					}
+
 					gamescope::VirtualConnectorKey_t ulKey = pWindow->GetVirtualConnectorKey( eVirtualConnectorStrategy );
 					if ( !gamescope::Algorithm::Contains( newKeys, ulKey ) )
 						newKeys.emplace_back( ulKey );
