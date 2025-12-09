@@ -1586,6 +1586,10 @@ namespace gamescope
         GetVBlankTimer().UpdateWasCompositing( true );
         GetVBlankTimer().UpdateLastDrawTime( get_time_in_nanos() - g_SteamCompMgrVBlankTime.ulWakeupTime );
 
+        int32_t nNewRefreshRate = (int32_t) ConvertHztomHz( roundf( vr::VRSystem()->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float ) ) );
+        if ( g_nOutputRefresh != nNewRefreshRate )
+            g_nOutputRefresh = nNewRefreshRate;
+
         m_pBackend->PollState();
 
         return 0;
