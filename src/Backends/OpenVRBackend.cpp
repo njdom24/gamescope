@@ -302,6 +302,16 @@ namespace gamescope
             return this;
         }
 
+        bool IsTouchForbidden() const { return m_bForbidTouchMode; }
+
+        virtual void SetProperty( ConnectorProperty eProperty, std::any value )
+        {
+            if ( eProperty == ConnectorProperty::IsFileBrowser )
+            {
+                m_bForbidTouchMode = std::any_cast<bool>( value );
+            }
+        }
+
         ///////////////////
         // INestedHints
         ///////////////////
@@ -377,6 +387,8 @@ namespace gamescope
         bool m_bWasVisible = false; // Event thread only
         std::atomic<bool> m_bOverlayShown = { false };
         std::atomic<bool> m_bSceneAppVisible = { false };
+
+        bool m_bForbidTouchMode = false;
     };
 
 	class COpenVRBackend final : public CBaseBackend
@@ -862,6 +874,11 @@ namespace gamescope
                 return TouchClickModes::Trackpad;
             }
 
+            if ( pConnector->IsTouchForbidden() )
+            {
+                return TouchClickModes::Left;
+            }
+
             if ( VirtualConnectorKeyIsNonSteamWindow( pConnector->GetVirtualConnectorKey() ) )
             {
                 return TouchClickModes::Passthrough;
@@ -1233,11 +1250,23 @@ namespace gamescope
                             }
                             else
                             {
+                                bool bDown = vrEvent.eventType == vr::VREvent_MouseButtonDown;
                                 wlserver_lock();
-                                if (vrEvent.eventType == vr::VREvent_MouseButtonDown)
-                                    wlserver_touchdown(flX, flY, 0, ++m_uFakeTimestamp);
-                                else
-                                    wlserver_touchup(0, ++m_uFakeTimestamp);
+                                if (vrEvent.data.mouse.button == vr::VRMouseButton_Left)
+                                {
+                                    if (bDown)
+                                        wlserver_touchdown(flX, flY, 0, ++m_uFakeTimestamp);
+                                    else
+                                        wlserver_touchup(0, ++m_uFakeTimestamp);
+                                }
+                                else if (vrEvent.data.mouse.button == vr::VRMouseButton_Right)
+                                {
+                                    wlserver_mousebutton(BTN_RIGHT, bDown, ++m_uFakeTimestamp);
+                                }
+                                else if (vrEvent.data.mouse.button == vr::VRMouseButton_Middle)
+                                {
+                                    wlserver_mousebutton(BTN_MIDDLE, bDown, ++m_uFakeTimestamp);
+                                }
                                 wlserver_unlock();
                             }
                         }

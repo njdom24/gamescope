@@ -117,6 +117,13 @@ struct steamcompmgr_win_t {
 	bool isOverlay = false;
 	bool isExternalOverlay = false;
 
+	bool bIsSteamPid = false;
+	bool bIsSteamWebHelperPid = false;
+	bool bIsVRWebHelperPid = false;
+	bool bIsDolphin = false; // File Manager
+
+	std::string pid_name;
+
 	bool IsAnyOverlay() const
 	{
 		return isOverlay || isExternalOverlay;

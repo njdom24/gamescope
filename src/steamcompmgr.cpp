@@ -3244,6 +3244,9 @@ win_has_game_id( steamcompmgr_win_t *w )
 static bool
 win_is_useless( steamcompmgr_win_t *w )
 {
+	if ( w->isSysTrayIcon )
+		return true;
+
 	// Windows that are 1x1 are pretty useless for override redirects.
 	// Just ignore them.
 	// Fixes the Xbox Login in Age of Empires 2: DE.
@@ -3423,6 +3426,9 @@ static bool is_good_override_candidate( steamcompmgr_win_t *override, steamcompm
 	auto rect = override->GetGeometry();
 	return override != focus && (rect.nX + rect.nWidth) > 0 && (rect.nY + rect.nHeight) > 0;
 } 
+
+static void
+handle_desktop_window(steamcompmgr_win_t *w);
 
 static bool
 pick_primary_focus_and_override(
@@ -3859,35 +3865,36 @@ void xwayland_ctx_t::DetermineAndApplyFocus( const std::vector< steamcompmgr_win
 	if (w->GetGeometry().nX != 0 || w->GetGeometry().nY != 0)
 		XMoveWindow(ctx->dpy, ctx->focus.focusWindow->xwayland().id, 0, 0);
 
-	bool bForceFullscreen = ctx->force_windows_fullscreen;
-
-	// Force desktop windows to be fullscreen
-	if ( !win_has_game_id( ctx->focus.focusWindow ) )
-		bForceFullscreen = true;
-
-	if ( window_is_fullscreen( ctx->focus.focusWindow ) || bForceFullscreen )
+	if ( win_has_game_id( w ) )
 	{
-		bool bIsSteam = window_is_steam( ctx->focus.focusWindow );
-		int fs_width  = ctx->root_width;
-		int fs_height = ctx->root_height;
-		if ( bIsSteam && g_nSteamMaxHeight && ctx->root_height > g_nSteamMaxHeight )
+		if ( window_is_fullscreen( ctx->focus.focusWindow ) )
 		{
-			float steam_height_scale = g_nSteamMaxHeight / (float)ctx->root_height;
-			fs_height = g_nSteamMaxHeight;
-			fs_width  = ctx->root_width * steam_height_scale;
-		}
+			bool bIsSteam = window_is_steam( ctx->focus.focusWindow );
+			int fs_width  = ctx->root_width;
+			int fs_height = ctx->root_height;
+			if ( bIsSteam && g_nSteamMaxHeight && ctx->root_height > g_nSteamMaxHeight )
+			{
+				float steam_height_scale = g_nSteamMaxHeight / (float)ctx->root_height;
+				fs_height = g_nSteamMaxHeight;
+				fs_width  = ctx->root_width * steam_height_scale;
+			}
 
-		if ( w->GetGeometry().nWidth != fs_width || w->GetGeometry().nHeight != fs_height || globalScaleRatio != 1.0f )
-			XResizeWindow(ctx->dpy, ctx->focus.focusWindow->xwayland().id, fs_width, fs_height);
+			if ( w->GetGeometry().nWidth != fs_width || w->GetGeometry().nHeight != fs_height || globalScaleRatio != 1.0f )
+				XResizeWindow(ctx->dpy, ctx->focus.focusWindow->xwayland().id, fs_width, fs_height);
+		}
+		else
+		{
+			if (ctx->focus.focusWindow->sizeHintsSpecified &&
+				((unsigned)ctx->focus.focusWindow->GetGeometry().nWidth != ctx->focus.focusWindow->requestedWidth ||
+				(unsigned)ctx->focus.focusWindow->GetGeometry().nHeight != ctx->focus.focusWindow->requestedHeight))
+			{
+				XResizeWindow(ctx->dpy, ctx->focus.focusWindow->xwayland().id, ctx->focus.focusWindow->requestedWidth, ctx->focus.focusWindow->requestedHeight);
+			}
+		}
 	}
 	else
 	{
-		if (ctx->focus.focusWindow->sizeHintsSpecified &&
-			((unsigned)ctx->focus.focusWindow->GetGeometry().nWidth != ctx->focus.focusWindow->requestedWidth ||
-			(unsigned)ctx->focus.focusWindow->GetGeometry().nHeight != ctx->focus.focusWindow->requestedHeight))
-		{
-			XResizeWindow(ctx->dpy, ctx->focus.focusWindow->xwayland().id, ctx->focus.focusWindow->requestedWidth, ctx->focus.focusWindow->requestedHeight);
-		}
+		handle_desktop_window( w );
 	}
 
 	Window	    root_return = None, parent_return = None;
@@ -4216,6 +4223,11 @@ determine_and_apply_focus( global_focus_t *pFocus )
 	}
 #endif
 
+	if ( pFocus->pVirtualConnector && pFocus->inputFocusWindow )
+	{
+		pFocus->pVirtualConnector->SetProperty( gamescope::ConnectorProperty::IsFileBrowser, pFocus->inputFocusWindow->bIsDolphin );
+	}
+
 	// Backchannel to Steam
 	unsigned long focusedWindow = 0;
 	unsigned long focusedAppId = 0;
@@ -4509,6 +4521,45 @@ get_win_icon(xwayland_ctx_t* ctx, steamcompmgr_win_t* w)
 }
 
 static void
+handle_desktop_window(steamcompmgr_win_t *w)
+{
+	if ( !w )
+		return;
+
+	if ( win_has_game_id( w ) || w->bIsSteamPid || w->bIsSteamWebHelperPid || w->bIsVRWebHelperPid )
+		return;
+
+	if ( w->type != steamcompmgr_win_type_t::XWAYLAND )
+		return;
+
+	if ( w->xwayland().a.override_redirect || w->oulTargetVROverlay )
+		return;
+
+	if ( win_maybe_a_dropdown( w ) || win_is_useless( w ) )
+		return;
+
+	xwayland_ctx_t *ctx = w->xwayland().ctx;
+
+	if ( w->sizeHintsSpecified && !window_is_fullscreen( w ) )
+	{
+		if ((unsigned)w->GetGeometry().nWidth != w->requestedWidth || (unsigned)w->GetGeometry().nHeight != w->requestedHeight)
+		{
+			XResizeWindow(ctx->dpy, w->xwayland().id, w->requestedWidth, w->requestedHeight);
+		}
+	}
+	else
+	{
+		int fs_width  = ctx->root_width;
+		int fs_height = ctx->root_height;
+
+		if ( w->GetGeometry().nWidth != fs_width || w->GetGeometry().nHeight != fs_height )
+		{
+			XResizeWindow(ctx->dpy, w->xwayland().id, fs_width, fs_height);
+		}
+	}
+}
+
+static void
 map_win(xwayland_ctx_t* ctx, Window id, unsigned long sequence)
 {
 	steamcompmgr_win_t		*w = find_win(ctx, id);
@@ -4608,6 +4659,8 @@ map_win(xwayland_ctx_t* ctx, Window id, unsigned long sequence)
 		XSetInputFocus(ctx->dpy, w->xwayland().id, RevertToNone, CurrentTime);
 	}
 
+	handle_desktop_window( w );
+
 	MakeFocusDirty();
 
 	set_wm_state( ctx, w->xwayland().id, ICCCM_NORMAL_STATE );
@@ -4636,6 +4689,50 @@ unmap_win(xwayland_ctx_t *ctx, Window id, bool fade)
 
 	finish_unmap_win(ctx, w);
 	set_wm_state( ctx, w->xwayland().id, ICCCM_WITHDRAWN_STATE );
+}
+
+std::string
+get_name_from_pid( pid_t pid )
+{
+	std::string procNameStr;
+
+	char filename[256];
+
+	snprintf( filename, sizeof( filename ), "/proc/%i/stat", pid );
+	std::ifstream proc_stat_file( filename );
+
+	if (!proc_stat_file.is_open() || proc_stat_file.bad())
+		return "";
+
+	std::string proc_stat;
+
+	std::getline( proc_stat_file, proc_stat );
+
+	char *procName = nullptr;
+	char *lastParens = nullptr;
+
+	for ( uint32_t i = 0; i < proc_stat.length(); i++ )
+	{
+		if ( procName == nullptr && proc_stat[ i ] == '(' )
+		{
+			procName = &proc_stat[ i + 1 ];
+		}
+
+		if ( proc_stat[ i ] == ')' )
+		{
+			lastParens = &proc_stat[ i ];
+		}
+	}
+
+	if (!lastParens)
+		return "";
+
+	*lastParens = '\0';
+
+	if ( procName )
+		procNameStr = procName;
+
+	return procNameStr;
 }
 
 uint32_t
@@ -4833,6 +4930,17 @@ add_win(xwayland_ctx_t *ctx, Window id, Window prev, unsigned long sequence)
 
 	if ( new_win->isExternalOverlay )
 		new_win->appID = 0;
+
+	std::string pid_name = get_name_from_pid( new_win->pid );
+	new_win->pid_name = pid_name;
+	if ( pid_name == "steam" )
+		new_win->bIsSteamPid = true;
+	if ( pid_name == "steamwebhelper" )
+		new_win->bIsSteamWebHelperPid = true;
+	if ( pid_name == "vrwebhelper" )
+		new_win->bIsVRWebHelperPid = true;
+	if ( pid_name == "dolphin" )
+		new_win->bIsDolphin = true;
 
 	Window transientFor = None;
 	if ( XGetTransientForHint( ctx->dpy, id, &transientFor ) )
@@ -8298,7 +8406,7 @@ steamcompmgr_main(int argc, char **argv)
 				{
 					// Exclude windows that are useless (1x1), or override redirect windows
 					if ( win_is_useless( pWindow ) ||
-						( pWindow->type == XWAYLAND && pWindow->xwayland().a.override_redirect ) )
+						( pWindow->type == steamcompmgr_win_type_t::XWAYLAND && pWindow->xwayland().a.override_redirect ) )
 					{
 						continue;
 					}

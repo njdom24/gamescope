@@ -16,6 +16,7 @@
 #include <optional>
 #include <atomic>
 #include <variant>
+#include <any>
 
 struct wlr_buffer;
 struct wlr_dmabuf_attributes;
@@ -165,6 +166,11 @@ namespace gamescope
         std::atomic<uint64_t> m_uCompletedPresents = { 0u };
     };
 
+    enum class ConnectorProperty
+    {
+        IsFileBrowser,
+    };
+
     class IBackendConnector
     {
     public:
@@ -201,6 +207,8 @@ namespace gamescope
         virtual uint64_t GetVirtualConnectorKey() const = 0;
 
         virtual INestedHints *GetNestedHints() = 0;
+
+        virtual void SetProperty( ConnectorProperty eProperty, std::any value ) = 0;
     };
 
     class CBaseBackendConnector : public IBackendConnector
@@ -226,6 +234,8 @@ namespace gamescope
         virtual BackendPresentFeedback& PresentationFeedback() override { return m_PresentFeedback; }
         virtual uint64_t GetVirtualConnectorKey() const override { return m_ulVirtualConnectorKey; }
         virtual INestedHints *GetNestedHints() override { return nullptr; }
+
+        virtual void SetProperty( ConnectorProperty eProperty, std::any value ) override { }
     protected:
         uint64_t m_ulConnectorId = 0;
         uint64_t m_ulVirtualConnectorKey = 0;
