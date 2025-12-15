@@ -18,8 +18,6 @@
 #include <wlr/types/wlr_seat.h>
 #include "wlr_end.hpp"
 
-#include "gamescope-input-method-protocol.h"
-
 struct wlserver_input_method_manager *global_manager = nullptr;
 
 /* The C/C++ standard library doesn't expose a reliable way to decode UTF-8,
@@ -407,7 +405,7 @@ void type_text(struct wlserver_input_method *ime, const char *text)
 	wl_event_source_timer_update(ime->ime_reset_ime_keyboard_event_source, 100 /* ms */);
 }
 
-static void perform_action(struct wlserver_input_method *ime, enum gamescope_input_method_action action)
+void perform_action(struct wlserver_input_method *ime, enum gamescope_input_method_action action)
 {
 	if (actions.count(action) == 0) {
 		ime_log.errorf("unsupported action %d", action);

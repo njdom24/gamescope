@@ -1139,7 +1139,46 @@ namespace gamescope
                 {
                     if (m_pIME)
                     {
-                        type_text(m_pIME, vrEvent.data.keyboard.cNewInput);
+                        const char *pchText = vrEvent.data.keyboard.cNewInput;
+                        size_t unStrLen = strlen( pchText );
+                        bool bEscaped = false;
+                        if ( unStrLen > 2 && pchText[0] == '\x1b' && pchText[1] == '[' )
+                        {
+                            bEscaped = true;
+                        }
+
+                        if ( bEscaped )
+                        {
+                            const char chControlChar = pchText[2];
+                            gamescope_input_method_action eAction = GAMESCOPE_INPUT_METHOD_ACTION_NONE;
+                            switch (chControlChar)
+                            {
+                                case 'D': eAction = GAMESCOPE_INPUT_METHOD_ACTION_MOVE_LEFT; break;
+                                case 'C': eAction = GAMESCOPE_INPUT_METHOD_ACTION_MOVE_RIGHT; break;
+                                case 'A': eAction = GAMESCOPE_INPUT_METHOD_ACTION_MOVE_UP; break;
+                                case 'B': eAction = GAMESCOPE_INPUT_METHOD_ACTION_MOVE_DOWN; break;
+                            }
+
+                            if ( eAction != GAMESCOPE_INPUT_METHOD_ACTION_NONE )
+                            {
+                                perform_action( m_pIME, eAction );
+                            }
+                        }
+                        else
+                        {
+                            if ( unStrLen == 1 && pchText[0] == '\n' )
+                            {
+                                perform_action( m_pIME, GAMESCOPE_INPUT_METHOD_ACTION_SUBMIT );
+                            }
+                            else if ( unStrLen == 1 && pchText[0] == '\b' )
+                            {
+                                perform_action( m_pIME, GAMESCOPE_INPUT_METHOD_ACTION_DELETE_LEFT );
+                            }
+                            else
+                            {
+                                type_text( m_pIME, pchText );
+                            }
+                        }
                     }
                     break;
                 }
