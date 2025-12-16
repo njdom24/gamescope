@@ -1035,7 +1035,7 @@ int g_BlurRadius = 5;
 unsigned int g_BlurFadeStartTime = 0;
 
 pid_t focusWindow_pid, sdFocusWindow_pid;
-std::shared_ptr<std::string> focusWindow_engine = nullptr;
+std::atomic<std::shared_ptr<std::string>> focusWindow_engine = nullptr;
 
 focus_t g_steamcompmgr_xdg_focus;
 std::vector<std::shared_ptr<steamcompmgr_win_t>> g_steamcompmgr_xdg_wins;
