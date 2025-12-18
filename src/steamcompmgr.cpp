@@ -8904,7 +8904,8 @@ steamcompmgr_main(int argc, char **argv)
 						}
 
 						// If we have a pending page flip and doing VRR, lets not do another...
-						if ( GetBackend()->GetCurrentConnector()->PresentationFeedback().CurrentPresentsInFlight() != 0 )
+						if ( GetBackend()->GetCurrentConnector() &&
+							 GetBackend()->GetCurrentConnector()->PresentationFeedback().CurrentPresentsInFlight() != 0 )
 							bShouldPaint = false;
 
 						break;
